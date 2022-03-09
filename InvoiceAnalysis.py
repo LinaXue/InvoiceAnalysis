@@ -21,6 +21,11 @@ import requests, re, os, datetime
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+#import matplotlib
+
+#matplotlib.use('tkagg')
+
+
 def transferDate(sYear, sMonth, eYear, eMonth):  
 
     date = []
@@ -60,36 +65,54 @@ def transferDate(sYear, sMonth, eYear, eMonth):
     return date
 
 def getInvoiceInfo(year, month):  
-
-    url = 'https://www.etax.nat.gov.tw/etw-main/web/ETW183W3_' + str(year) + str(month).zfill(2) + '/'
+    
+    # url = 'https://www.etax.nat.gov.tw/etw-main/web/ETW183W3_' + str(year) + str(month).zfill(2) + '/'
+    
+    url = 'https://www.etax.nat.gov.tw/etw-main/ETW183W3_'+str(year)+str(month).zfill(2)+'/'
 
     html = requests.get(url).content.decode('utf-8')
 
-    sp = BeautifulSoup(html, 'html.parser')
+    sp = BeautifulSoup(html, 'html5lib')
 
     transInfo = []  #[商品1, 商品2, 商品3]
 
     addrInfo = []
 
     
-
-    for trans in sp.find_all('td', headers=re.compile('tranItem(\d?)')):
-
-        for tran in re.split('[\*,、，。等共計及和個項組份罐0-9元 ]', trans.text):
-
-            if tran:
-
-                transInfo.append(tran)
-
-                
-
-    for address in sp.find_all('td', headers=re.compile('companyAddress(\d?)')):
-
-        addrInfo.append(address.text[0:2])
-
+    # for trans in sp.find_all('td', headers=re.compile('tranItem(\d?)')):
+    for trans in sp.find_all('td'):
+        
+        if trans.get('data-th') in ['交易項目']:
             
+            #print(trans.text.split('[\*,、，。等共計及和個項組份罐0123456789元] '))
 
+            for tran in re.split('[\*,、，。等共計及和個項組份罐0-9元 ]', trans.text):
+                
+                if tran: #split後會有空白格
+                    
+                    #print(tran)
+                    transInfo.append(tran)
+        
+        if trans.get('data-th') in ['營業地址']:
+            
+            addrInfo.append(trans.text[0:3])
+            
     return transInfo, addrInfo
+    
+
+def processTest(startYear, startMonth, endYear, endMonth):
+    
+    print('開始年份: '+str(startYear)+' 開始月份: '+str(startMonth[0]))
+    print('開始年份: '+str(endYear)+' 開始月份: '+str(endMonth[0]))
+    
+    date = transferDate(startYear, startMonth[0], endYear, endMonth[0])
+    
+    for d in date:
+        print(str(d[0])+' '+str(d[1]))
+        print('https://www.etax.nat.gov.tw/etw-main/ETW183W3_'+str(d[0])+str(d[1]).zfill(2)+'/')
+        getInvoiceInfo(d[0], d[1])
+        #print(itemInfo)
+        #print(countyInfo)
 
 def process(startYear, startMonth, endYear, endMonth):
 
@@ -155,7 +178,7 @@ def process(startYear, startMonth, endYear, endMonth):
 
                 for county in info:
 
-                    if county == '台北': county = '臺北'
+                    if county == '台北市': county = '臺北市'
 
                     countyInfo[county] = countyInfo.get(county, 0) + 1
 
@@ -225,27 +248,27 @@ def windowtk():
 
     start = tk.Label(window, text = '開始年月: ', justify = tk.RIGHT, width = 100)
 
-    start.place(x=10, y=10, width=100, height=20)
+    start.place(x=10, y=30, width=100, height=20)
 
     sY = tk.Label(window, text = '年(民國)', justify = tk.RIGHT, width = 50)
 
-    sY.place(x=195, y=10, width=50, height=20)
+    sY.place(x=195, y=30, width=50, height=20)
 
     sM = tk.Label(window, text = '月', justify = tk.RIGHT, width = 20)
 
-    sM.place(x=350, y=10, width=20, height=20)
+    sM.place(x=350, y=30, width=20, height=20)
 
     end = tk.Label(window, text = '結束年月: ', justify = tk.RIGHT, width = 100)
 
-    end.place(x=10, y=40, width=100, height=20)
+    end.place(x=10, y=70, width=100, height=20)
 
     eY = tk.Label(window, text = '年(民國)', justify = tk.RIGHT, width = 50)
 
-    eY.place(x=195, y=40, width=50, height=20)
+    eY.place(x=195, y=70, width=50, height=20)
 
     eM = tk.Label(window, text = '月', justify = tk.RIGHT, width = 20)
 
-    eM.place(x=350, y=40, width=20, height=20)
+    eM.place(x=350, y=70, width=20, height=20)
 
  
 
@@ -255,29 +278,29 @@ def windowtk():
 
     startYear = ttk.Combobox(window, width = 120, values = year)
 
-    startYear.place(x=110, y=10, width=80, height=20)
+    startYear.place(x=110, y=30, width=80, height=20)
 
     startMon = ttk.Combobox(width = 100, values = month)
 
-    startMon.place(x=260, y=10, width=80, height=20)
+    startMon.place(x=260, y=30, width=80, height=20)
 
     endYear = ttk.Combobox(window, width=80, values = year)
 
-    endYear.place(x=110, y=40, width=80, height=20)
+    endYear.place(x=110, y=70, width=80, height=20)
 
     endMon = ttk.Combobox(window, width = 100, values = month)
 
-    endMon.place(x=260, y=40, width=80, height=20)
+    endMon.place(x=260, y=70, width=80, height=20)
 
     
 
     startAna = tk.Button(window, text='開始分析', width=50, command = lambda: process(startYear.get(), startMon.get().split('、'), endYear.get(), endMon.get().split('、'))) #endYear.get(), endMon.get()
 
-    startAna.place(x=160, y=130, width=100, height=20)
+    startAna.place(x=160, y=160, width=100, height=20)
 
-    endAna = tk.Button(window, text='結束', width=50, command = window.quit)
+    #endAna = tk.Button(window, text='結束', width=50, command = window.destory)
 
-    endAna.place(x=160, y=160, width=100, height=20)    
+    #endAna.place(x=160, y=160, width=100, height=20)    
 
     
 
